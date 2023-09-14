@@ -44,8 +44,8 @@ func MetaDataManagerInit(path string, inChan chan string, outChan chan BookFiles
 
 func (mdm *MetaDataManager) HandleChans() {
 	for {
-		println("NA3N?D")
 		bookUuid := <-mdm.inChan
+		println("meta")
 		book := mdm.BooksMetaData[BookUuid(bookUuid)]
 		fullPath := book.FilePath + book.FileName
 

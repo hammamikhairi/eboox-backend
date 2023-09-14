@@ -2,7 +2,9 @@ package servermanager
 
 import (
 	metaDataM "eboox/MetaDataManager"
+	userActivityM "eboox/UserActivityManager"
 	utils "eboox/Utils"
+
 	"encoding/json"
 	"net/http"
 	"os"
@@ -16,15 +18,17 @@ type ServerManager struct {
 	CurrentBookUuid    string
 	PreviousBook       string
 
-	OutChan chan string
-	inChan  chan metaDataM.BookFiles
+	OutChan          chan string
+	BookFileChan     chan metaDataM.BookFiles
+	BookActivityChan chan userActivityM.BookActivity
 }
 
-func ServerManagerInit(metaDataPTR *map[metaDataM.BookUuid]metaDataM.BookMetaData, userActivityDir string, outChan chan string, inChan chan metaDataM.BookFiles) *ServerManager {
+func ServerManagerInit(metaDataPTR *map[metaDataM.BookUuid]metaDataM.BookMetaData, userActivityDir string, outChan chan string, bookFileChan chan metaDataM.BookFiles, bookActivityChan chan userActivityM.BookActivity) *ServerManager {
 	return &ServerManager{
 		LibraryMetaDataPTR: metaDataPTR,
-		inChan:             inChan,
 		OutChan:            outChan,
+		BookFileChan:       bookFileChan,
+		BookActivityChan:   bookActivityChan,
 	}
 }
 
@@ -52,7 +56,6 @@ func (sm *ServerManager) HandleBookMetaData() func(http.ResponseWriter, *http.Re
 func (sm *ServerManager) HandleBook() func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		bookUuid := req.URL.Query().Get("book_uuid")
-		println(">> ", sm.CurrentBookUuid, sm.PreviousBook)
 		sm.PreviousBook = sm.CurrentBookUuid
 		sm.CurrentBookUuid = bookUuid
 
@@ -110,11 +113,13 @@ func (sm *ServerManager) HandlersInit() {
 func (sm *ServerManager) ServeAllHandler(w http.ResponseWriter, req *http.Request) {
 	if sm.CurrentBookUuid != sm.PreviousBook {
 		sm.PreviousBook = sm.CurrentBookUuid
+		// broadcast
 		sm.OutChan <- sm.CurrentBookUuid
-		select {
-		case response := <-sm.inChan:
-			sm.CurrentBookFiles = response
-		}
+
+		// responses
+		sm.CurrentBookFiles = <-sm.BookFileChan
+		temp := <-sm.BookActivityChan
+		utils.Pp(temp)
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
