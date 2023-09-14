@@ -35,7 +35,7 @@ func UserConfManagerInit() *UserConfManager {
 		utils.Assert(err == nil, "Assersion failure : Cannot load data from confFile.")
 		userConf := UserConfManager{}
 		json.Unmarshal(cfgData, &userConf)
-		println("loaded config successfully from [%s]\n", path)
+		fmt.Printf("Loaded config successfully from [%s]\n", path)
 		return &userConf
 	} else {
 		// make and save
