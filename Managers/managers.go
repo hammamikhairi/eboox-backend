@@ -15,6 +15,8 @@ type BooksManagers struct {
 	UserConfM     *userconfmanager.UserConfManager
 }
 
+const BROAD_CAST_COUNT int = 1
+
 func ManagersInit(libraryPath string) BooksManagers {
 
 	var (
@@ -32,7 +34,7 @@ func ManagersInit(libraryPath string) BooksManagers {
 		for {
 			select {
 			case request = <-bookUuidBroadCast:
-				for i := 0; i < 2; i++ {
+				for i := 0; i < BROAD_CAST_COUNT; i++ {
 					bookUuidChan <- request
 				}
 			}
@@ -40,11 +42,10 @@ func ManagersInit(libraryPath string) BooksManagers {
 		}
 	}()
 
-	go userActivityManager.HandleChans()
 	go metaDataManager.HandleChans()
 
 	bm := BooksManagers{
-		ServerM:       serverManager.ServerManagerInit(&metaDataManager.BooksMetaData, userConfManager.UserActivityDir, bookUuidBroadCast, bookFilesChan, bookActivityChan),
+		ServerM:       serverManager.ServerManagerInit(&metaDataManager.BooksMetaData, userConfManager.UserActivityDir, bookUuidBroadCast, bookFilesChan, userActivityManager.BooksActivity),
 		UserConfM:     userConfManager,
 		UserActivityM: userActivityManager,
 		MetaDataM:     metaDataManager,

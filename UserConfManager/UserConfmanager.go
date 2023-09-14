@@ -24,7 +24,7 @@ func Default() UserConfManager {
 	return UserConfManager{
 		LibraryDir: homeDir + DEFAULT_BOOKS_DIR,
 		// Implement handler
-		UserActivityDir: homeDir + DEFAULT_BOOKS_DIR + "Activity/",
+		UserActivityDir: homeDir + DEFAULT_BOOKS_DIR + "activity.json",
 	}
 }
 

@@ -85,6 +85,11 @@ func ConfExists(confPath string) (string, bool) {
 	return confDir + "/eboox", !os.IsNotExist(err)
 }
 
+func ActivitiesExists(actPath string) bool {
+	_, err := os.Stat(actPath)
+	return !os.IsNotExist(err)
+}
+
 func MakeFullDir(path string) {
 	err := os.Mkdir(path, os.ModePerm)
 	Assert(err == nil, "Error creating Directory : [%s].\n", path)
@@ -98,6 +103,10 @@ func MakeFile(path string) {
 func MakeConfig(path string) {
 	MakeFullDir(path)
 	MakeFile(path + "/conf.json")
+}
+
+func MakeActivity(path string) {
+	MakeFile(path)
 }
 
 func MapToSlice[T any, Q comparable](origin *map[Q]T) []T {

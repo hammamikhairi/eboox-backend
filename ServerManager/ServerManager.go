@@ -14,21 +14,28 @@ type Endpoint string
 
 type ServerManager struct {
 	LibraryMetaDataPTR *map[metaDataM.BookUuid]metaDataM.BookMetaData
-	CurrentBookFiles   metaDataM.BookFiles
-	CurrentBookUuid    string
-	PreviousBook       string
+	BooksActivitiesPTR *userActivityM.BooksActivity
 
-	OutChan          chan string
-	BookFileChan     chan metaDataM.BookFiles
-	BookActivityChan chan userActivityM.BookActivity
+	CurrentBookFiles metaDataM.BookFiles
+	CurrentBookUuid  string
+	PreviousBook     string
+
+	OutChan      chan string
+	BookFileChan chan metaDataM.BookFiles
 }
 
-func ServerManagerInit(metaDataPTR *map[metaDataM.BookUuid]metaDataM.BookMetaData, userActivityDir string, outChan chan string, bookFileChan chan metaDataM.BookFiles, bookActivityChan chan userActivityM.BookActivity) *ServerManager {
+func ServerManagerInit(
+	metaDataPTR *map[metaDataM.BookUuid]metaDataM.BookMetaData,
+	userActivityDir string,
+	outChan chan string,
+	bookFileChan chan metaDataM.BookFiles,
+	bookActivitiesPTR *userActivityM.BooksActivity,
+) *ServerManager {
 	return &ServerManager{
 		LibraryMetaDataPTR: metaDataPTR,
 		OutChan:            outChan,
 		BookFileChan:       bookFileChan,
-		BookActivityChan:   bookActivityChan,
+		BooksActivitiesPTR: bookActivitiesPTR,
 	}
 }
 
@@ -106,20 +113,26 @@ func (sm *ServerManager) HandlersInit() {
 	http.HandleFunc("/bookmetadata", sm.HandleBookMetaData())
 	http.HandleFunc("/book", sm.HandleBook())
 	http.HandleFunc("/cover", sm.HandleCover())
+	http.HandleFunc("/activity", sm.HandleBookActivity)
 	// http.HandleFunc("/META-INF/container.xml", sm.TEMPContainerHandler())
 	http.Handle("/", http.HandlerFunc(sm.ServeAllHandler))
 }
 
+func (sm *ServerManager) HandleBookActivity(w http.ResponseWriter, req *http.Request) {
+
+	bookUuid := req.URL.Query().Get("book_uuid")
+	book := (*sm.BooksActivitiesPTR)[metaDataM.BookUuid(bookUuid)]
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(book)
+}
 func (sm *ServerManager) ServeAllHandler(w http.ResponseWriter, req *http.Request) {
 	if sm.CurrentBookUuid != sm.PreviousBook {
 		sm.PreviousBook = sm.CurrentBookUuid
 		// broadcast
 		sm.OutChan <- sm.CurrentBookUuid
-
 		// responses
 		sm.CurrentBookFiles = <-sm.BookFileChan
-		temp := <-sm.BookActivityChan
-		utils.Pp(temp)
+		// sm.CurrentBookActivity = <-sm.BookActivityChan
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
