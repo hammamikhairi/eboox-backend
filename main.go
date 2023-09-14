@@ -1,46 +1,33 @@
 package main
 
 import (
-	"archive/zip"
-	"fmt"
-	"io/ioutil"
-	"log"
+	// "net/http"
+	managers "eboox/Managers"
+	"net/http"
 	"os"
-	"strings"
-	// "io"
-	// "io/ioutil"
-	// "bytes"
-	// "path/filepath"
-	// "strings"
+	"os/signal"
 )
 
+const TEMP_LIBRARY_PATH string = "/home/khairi/Documents/Library"
+
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run get_cover_photo.go path/to/epub-file.epub")
-		return
-	}
 
-	filePath := os.Args[1]
+	println("start")
+	managers := managers.ManagersInit(TEMP_LIBRARY_PATH)
+	// defer managers.Save()
 
-	// Open the EPUB file
-	r, err := zip.OpenReader(filePath)
-	if err != nil {
-		log.Fatalf("Error opening EPUB file: %s", err)
-	}
-	defer r.Close()
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
 
-	for _, f := range r.File {
-		// fmt.Printf("%+v\n", f)
-		if strings.Contains(f.Name, "stylesheet.css") {
-			rc, err := f.Open()
-			if err != nil {
-				continue
-			}
-			defer rc.Close()
-
-			buffer, _ := ioutil.ReadAll(rc)
-			fmt.Println(string(buffer))
+	go func() {
+		for {
+			<-c
+			managers.Save()
+			os.Exit(0)
 		}
+	}()
+
+	if err := http.ListenAndServe(":5050", nil); err != nil {
+		println("die")
 	}
-	// return nil, fmt.Errorf("cover image not found in EPUB file")
 }
