@@ -31,22 +31,15 @@ type UserActivityManager struct {
 	BooksActivity      *BooksActivity
 
 	UserActivityDir string
-
-	inChan  chan string
-	outChan chan BookActivity
 }
 
 func UserActivityManagerInit(libraryMetaDataPTR *map[metadatamanager.BookUuid]metadatamanager.BookMetaData,
 	userActivityDir string,
-	inChan chan string,
-	outChan chan BookActivity,
 ) *UserActivityManager {
 
 	return &UserActivityManager{
 		LibraryMetaDataPTR: libraryMetaDataPTR,
 		UserActivityDir:    userActivityDir,
-		inChan:             inChan,
-		outChan:            outChan,
 		BooksActivity:      LoadBooksActivities(userActivityDir, libraryMetaDataPTR),
 	}
 }

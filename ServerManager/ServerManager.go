@@ -7,7 +7,6 @@ import (
 
 	"encoding/json"
 	"net/http"
-	"os"
 )
 
 type Endpoint string
@@ -18,10 +17,10 @@ type ServerManager struct {
 
 	CurrentBookFiles metaDataM.BookFiles
 	CurrentBookUuid  string
-	PreviousBook     string
+	PreviousBookUuid string
 
-	OutChan      chan string
-	BookFileChan chan metaDataM.BookFiles
+	OutChan       chan string
+	BookFilesChan chan metaDataM.BookFiles
 }
 
 func ServerManagerInit(
@@ -34,7 +33,7 @@ func ServerManagerInit(
 	return &ServerManager{
 		LibraryMetaDataPTR: metaDataPTR,
 		OutChan:            outChan,
-		BookFileChan:       bookFileChan,
+		BookFilesChan:      bookFileChan,
 		BooksActivitiesPTR: bookActivitiesPTR,
 	}
 }
@@ -63,32 +62,19 @@ func (sm *ServerManager) HandleBookMetaData() func(http.ResponseWriter, *http.Re
 func (sm *ServerManager) HandleBook() func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		bookUuid := req.URL.Query().Get("book_uuid")
-		sm.PreviousBook = sm.CurrentBookUuid
+		sm.PreviousBookUuid = sm.CurrentBookUuid
 		sm.CurrentBookUuid = bookUuid
 
 		var (
-			book metaDataM.BookMetaData
-			ok   bool
+			// book metaDataM.BookMetaData
+			ok bool
 		)
-		if book, ok = (*sm.LibraryMetaDataPTR)[metaDataM.BookUuid(bookUuid)]; !ok {
-			w.WriteHeader(http.StatusNotFound)
-		}
-		bookPath := book.FilePath + book.FileName
-
-		file, err := os.Open(bookPath)
-		if err != nil {
-			http.Error(w, "File not found", http.StatusNotFound)
-			return
-		}
-		defer file.Close()
-		fileInfo, err := file.Stat()
-		if err != nil {
-			http.Error(w, "Unable to get file info", http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Disposition", "attachment; filename="+fileInfo.Name())
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		http.ServeContent(w, req, fileInfo.Name(), fileInfo.ModTime(), file)
+		if _, ok = (*sm.LibraryMetaDataPTR)[metaDataM.BookUuid(bookUuid)]; !ok {
+			w.WriteHeader(http.StatusNotFound)
+		} else {
+			w.Write([]byte("Book Found."))
+		}
 	}
 }
 
@@ -111,11 +97,11 @@ func (sm *ServerManager) HandleCover() func(http.ResponseWriter, *http.Request) 
 func (sm *ServerManager) HandlersInit() {
 	http.HandleFunc("/librarymetadata", sm.HandleLibraryMetaData())
 	http.HandleFunc("/bookmetadata", sm.HandleBookMetaData())
-	http.HandleFunc("/book", sm.HandleBook())
+	http.HandleFunc("/booki", sm.HandleBook())
 	http.HandleFunc("/cover", sm.HandleCover())
 	http.HandleFunc("/activity", sm.HandleBookActivity)
 	// http.HandleFunc("/META-INF/container.xml", sm.TEMPContainerHandler())
-	http.Handle("/", http.HandlerFunc(sm.ServeAllHandler))
+	http.Handle("/", http.HandlerFunc(sm.HandleBookFiles))
 }
 
 func (sm *ServerManager) HandleBookActivity(w http.ResponseWriter, req *http.Request) {
@@ -125,14 +111,11 @@ func (sm *ServerManager) HandleBookActivity(w http.ResponseWriter, req *http.Req
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(book)
 }
-func (sm *ServerManager) ServeAllHandler(w http.ResponseWriter, req *http.Request) {
-	if sm.CurrentBookUuid != sm.PreviousBook {
-		sm.PreviousBook = sm.CurrentBookUuid
-		// broadcast
+func (sm *ServerManager) HandleBookFiles(w http.ResponseWriter, req *http.Request) {
+	if sm.CurrentBookUuid != sm.PreviousBookUuid {
+		sm.PreviousBookUuid = sm.CurrentBookUuid
 		sm.OutChan <- sm.CurrentBookUuid
-		// responses
-		sm.CurrentBookFiles = <-sm.BookFileChan
-		// sm.CurrentBookActivity = <-sm.BookActivityChan
+		sm.CurrentBookFiles = <-sm.BookFilesChan
 	}
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")

@@ -20,14 +20,13 @@ const BROAD_CAST_COUNT int = 1
 func ManagersInit(libraryPath string) BooksManagers {
 
 	var (
-		bookUuidBroadCast chan string                           = make(chan string, 1)
-		bookUuidChan      chan string                           = make(chan string, 2)
-		bookFilesChan     chan metadatamanager.BookFiles        = make(chan metadatamanager.BookFiles, 1)
-		bookActivityChan  chan useractivitymanager.BookActivity = make(chan useractivitymanager.BookActivity, 1)
+		bookUuidBroadCast chan string                    = make(chan string, 1)
+		bookUuidChan      chan string                    = make(chan string, 2)
+		bookFilesChan     chan metadatamanager.BookFiles = make(chan metadatamanager.BookFiles, 1)
 	)
 	metaDataManager := metadatamanager.MetaDataManagerInit(libraryPath, bookUuidChan, bookFilesChan)
 	userConfManager := userconfmanager.UserConfManagerInit()
-	userActivityManager := useractivitymanager.UserActivityManagerInit(&metaDataManager.BooksMetaData, userConfManager.UserActivityDir, bookUuidChan, bookActivityChan)
+	userActivityManager := useractivitymanager.UserActivityManagerInit(&metaDataManager.BooksMetaData, userConfManager.UserActivityDir)
 
 	go func() {
 		var request string

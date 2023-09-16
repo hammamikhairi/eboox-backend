@@ -22,8 +22,7 @@ type UserConfManager struct {
 func Default() UserConfManager {
 	homeDir, _ := os.UserHomeDir()
 	return UserConfManager{
-		LibraryDir: homeDir + DEFAULT_BOOKS_DIR,
-		// Implement handler
+		LibraryDir:      homeDir + DEFAULT_BOOKS_DIR,
 		UserActivityDir: homeDir + DEFAULT_BOOKS_DIR + "activity.json",
 	}
 }

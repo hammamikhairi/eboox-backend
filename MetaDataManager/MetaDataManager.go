@@ -13,6 +13,7 @@ import (
 
 type MetaDataManager struct {
 	BooksMetaData map[BookUuid]BookMetaData
+	LibraryPath   string
 
 	inChan  chan string
 	OutChan chan BookFiles
@@ -37,6 +38,7 @@ func MetaDataManagerInit(path string, inChan chan string, outChan chan BookFiles
 
 	return &MetaDataManager{
 		BooksMetaData: LoadBooksMetaData(path),
+		LibraryPath:   path,
 		inChan:        inChan,
 		OutChan:       outChan,
 	}
