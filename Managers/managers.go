@@ -1,8 +1,8 @@
 package managers
 
 import (
+	bindingsManager "eboox/BindingsManager"
 	metadatamanager "eboox/MetaDataManager"
-	serverManager "eboox/ServerManager"
 	"eboox/UserActivityManager"
 	"eboox/UserConfManager"
 	utils "eboox/Utils"
@@ -11,7 +11,7 @@ import (
 type BooksManagers struct {
 	UserActivityM *useractivitymanager.UserActivityManager
 	MetaDataM     *metadatamanager.MetaDataManager
-	ServerM       *serverManager.ServerManager
+	BindingsM     *bindingsManager.BindingsManager
 	UserConfM     *userconfmanager.UserConfManager
 }
 
@@ -44,17 +44,19 @@ func ManagersInit(libraryPath string) BooksManagers {
 	go metaDataManager.HandleChans()
 
 	bm := BooksManagers{
-		ServerM:       serverManager.ServerManagerInit(&metaDataManager.BooksMetaData, userConfManager.UserActivityDir, bookUuidBroadCast, bookFilesChan, userActivityManager.BooksActivity),
+		BindingsM:     bindingsManager.BindingsManagerInit(&metaDataManager.BooksMetaData, userConfManager.UserActivityDir, bookUuidBroadCast, bookFilesChan, userActivityManager.BooksActivity),
 		UserConfM:     userConfManager,
 		UserActivityM: userActivityManager,
 		MetaDataM:     metaDataManager,
 	}
 
-	go bm.ServerM.HandlersInit()
+	go bm.BindingsM.HandlersInit()
 
 	return bm
 }
 
+// XXX - DEV
 func (m *BooksManagers) Save() {
-	utils.Assert(false, "[BooksManagers.Save] NOT IMPLEMENTED.")
+	m.UserActivityM.Save()
+	utils.Assert(false, "[BooksManagers.Save] NOT Fully IMPLEMENTED.")
 }

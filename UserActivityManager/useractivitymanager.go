@@ -13,24 +13,28 @@ type BookActivity struct {
 	// XXX - DEV
 	BookUuid string
 
+	LastOpened   string
 	BookProgress string
-	Bookmarks    []string    `json:"bookmarks"`
-	Highlights   []Highlight `json:"highlights"`
+	Bookmarks    []string     `json:"bookmarks"`
+	Highlights   []*Highlight `json:"highlights"`
 }
 
 type Highlight struct {
+	Date    string
 	Content string
-	Bounds  []string
+	Bounds  string
 	Note    string
 }
 
-type BooksActivity map[metadatamanager.BookUuid]BookActivity
-
 type UserActivityManager struct {
 	LibraryMetaDataPTR *map[metadatamanager.BookUuid]metadatamanager.BookMetaData
-	BooksActivity      *BooksActivity
+	BooksActivity      *map[metadatamanager.BookUuid]*BookActivity
 
 	UserActivityDir string
+}
+
+func (ba *UserActivityManager) UpdateProgress(bookUuid, newProg string) {
+	// ba.Activities[Bo]
 }
 
 func UserActivityManagerInit(libraryMetaDataPTR *map[metadatamanager.BookUuid]metadatamanager.BookMetaData,
@@ -47,8 +51,8 @@ func UserActivityManagerInit(libraryMetaDataPTR *map[metadatamanager.BookUuid]me
 func LoadBooksActivities(
 	actPath string,
 	libraryMetaDataPTR *map[metadatamanager.BookUuid]metadatamanager.BookMetaData,
-) *BooksActivity {
-	booksActivities := BooksActivity{}
+) *map[metadatamanager.BookUuid]*BookActivity {
+	booksActivities := map[metadatamanager.BookUuid]*BookActivity{}
 	if utils.ActivitiesExists(actPath) {
 		// load
 		actData, err := os.ReadFile(actPath)
@@ -62,7 +66,7 @@ func LoadBooksActivities(
 			if _, ok := booksActivities[bookUuid]; !ok {
 				// XXX - might break studff, idk
 				log.Printf("Loaded New Book <%s>", bookUuid)
-				booksActivities[bookUuid] = BookActivity{
+				booksActivities[bookUuid] = &BookActivity{
 					BookUuid: string(bookUuid),
 				}
 			}
@@ -79,7 +83,7 @@ func LoadBooksActivities(
 		// create
 		utils.MakeActivity(actPath)
 		for bookUuid := range *libraryMetaDataPTR {
-			booksActivities[bookUuid] = BookActivity{
+			booksActivities[bookUuid] = &BookActivity{
 				BookUuid: string(bookUuid),
 			}
 		}
@@ -89,4 +93,11 @@ func LoadBooksActivities(
 		fmt.Printf("Initialized Books records at [%s]\n", actPath)
 	}
 	return &booksActivities
+}
+
+func (acm *UserActivityManager) Save() {
+	actData, _ := json.MarshalIndent(acm.BooksActivity, "", "  ")
+	err := os.WriteFile(acm.UserActivityDir, actData, 0644)
+	utils.Assert(err == nil, "Assersion failure : Cannot write conf to file.")
+	fmt.Printf("Saved Books records at [%s]\n", acm.UserActivityDir)
 }

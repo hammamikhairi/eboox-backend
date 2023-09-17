@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func Assert(cond bool, msg string, format ...any) {
@@ -109,10 +110,15 @@ func MakeActivity(path string) {
 	MakeFile(path)
 }
 
-func MapToSlice[T any, Q comparable](origin *map[Q]T) []T {
-	var out []T
-	for _, val := range *origin {
-		out = append(out, val)
+func MapToSlice[T, P any, Q comparable](metadata *map[Q]T, activities *map[Q]P) []map[string]interface{} {
+	var out []map[string]interface{}
+	for uuid, meta := range *metadata {
+		out = append(out, map[string]interface{}{"metadata": meta, "activities": (*activities)[uuid]})
 	}
 	return out
+}
+
+func GetToday() string {
+	today := time.Now()
+	return fmt.Sprintf("%02d-%02d-%d", today.Day(), today.Month(), today.Year())
 }
