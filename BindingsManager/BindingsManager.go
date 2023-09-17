@@ -4,6 +4,7 @@ import (
 	metaDataM "eboox/MetaDataManager"
 	userActivityM "eboox/UserActivityManager"
 	utils "eboox/Utils"
+	"log"
 
 	"encoding/json"
 	"io/ioutil"
@@ -39,6 +40,7 @@ func BindingsManagerInit(
 }
 
 // FIXME : check for existance before handling
+
 func (sm *BindingsManager) HandleLibraryMetaData() func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -104,6 +106,7 @@ func (sm *BindingsManager) HandleBookFiles(w http.ResponseWriter, req *http.Requ
 		sm.OutChan <- sm.CurrentBookUuid
 		sm.CurrentBookFiles = <-sm.BookFilesChan
 	}
+	log.Printf("reqested [%s] for <%s>", req.URL.Path, sm.CurrentBookUuid)
 
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Write(sm.CurrentBookFiles[req.URL.Path[1:]])

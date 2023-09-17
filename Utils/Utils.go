@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -115,6 +116,18 @@ func MapToSlice[T, P any, Q comparable](metadata *map[Q]T, activities *map[Q]P) 
 	for uuid, meta := range *metadata {
 		out = append(out, map[string]interface{}{"metadata": meta, "activities": (*activities)[uuid]})
 	}
+
+	// sort by time
+	// feel free to send me death threats : khairihammami@outlook.com
+	sort.Slice(out, func(i, j int) bool {
+		layout := "02-01-2006"
+		timeI, _ := time.Parse(layout,
+			strings.Split(fmt.Sprint(out[i]["activities"].(P)), " ")[1])
+		timeJ, _ := time.Parse(layout,
+			strings.Split(fmt.Sprint(out[j]["activities"].(P)), " ")[1])
+		return timeI.After(timeJ)
+	})
+
 	return out
 }
 
