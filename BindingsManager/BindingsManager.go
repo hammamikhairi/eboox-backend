@@ -4,6 +4,7 @@ import (
 	metaDataM "eboox/MetaDataManager"
 	userActivityM "eboox/UserActivityManager"
 	utils "eboox/Utils"
+	"fmt"
 	"log"
 
 	"encoding/json"
@@ -57,7 +58,7 @@ func (sm *BindingsManager) HandleBookMetaData() func(http.ResponseWriter, *http.
 
 			bookAct := (*sm.BooksActivitiesPTR)[metaDataM.BookUuid(bookUuid)]
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]interface{}{"metadata": book, "activity": bookAct})
+			json.NewEncoder(w).Encode(map[string]interface{}{"metadata": book, "activities": bookAct})
 			return
 		}
 		w.WriteHeader(http.StatusNotFound)
@@ -106,10 +107,26 @@ func (sm *BindingsManager) HandleBookFiles(w http.ResponseWriter, req *http.Requ
 		sm.OutChan <- sm.CurrentBookUuid
 		sm.CurrentBookFiles = <-sm.BookFilesChan
 	}
-	log.Printf("reqested [%s] for <%s>", req.URL.Path, sm.CurrentBookUuid)
-
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Write(sm.CurrentBookFiles[req.URL.Path[1:]])
+
+	file := req.URL.Path[1:]
+	bookUuid := metaDataM.BookUuid(sm.CurrentBookUuid)
+
+	if index, ok := (*sm.LibraryMetaDataPTR)[bookUuid].BookSpine[file]; ok {
+		(*sm.BooksActivitiesPTR)[bookUuid].BookProgress = fmt.Sprintf(
+			"%.2f",
+			(float32(index)/float32(len((*sm.LibraryMetaDataPTR)[bookUuid].BookSpine)))*100,
+		)
+		println("PROGRESS  >> ", index, " OUT OF : ", len((*sm.LibraryMetaDataPTR)[bookUuid].BookSpine))
+	}
+
+	if book, ok := sm.CurrentBookFiles[file]; ok {
+		log.Printf("[OK] reqested [%s] for <%s>", file, sm.CurrentBookUuid)
+		w.Write(book)
+		return
+	}
+	log.Printf("[FILE NOT FOUND] [%s] for <%s>", file, sm.CurrentBookUuid)
+	w.Write([]byte{})
 }
 
 func (sm *BindingsManager) HandlersInit() {
@@ -128,15 +145,12 @@ func (sm *BindingsManager) HandlersInit() {
 
 // Activities handlers
 func (sm *BindingsManager) HandleProgress(w http.ResponseWriter, req *http.Request) {
-	var requestData map[string]string
-	body, _ := ioutil.ReadAll(req.Body)
-	if err := json.Unmarshal(body, &requestData); err != nil {
-		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
-		return
-	}
 
-	bookUuid := requestData["book_uuid"]
-	(*sm.BooksActivitiesPTR)[metaDataM.BookUuid(bookUuid)].BookProgress = requestData["progress"]
+	bookUuid := req.URL.Query().Get("book_uuid")
+	progress := req.URL.Query().Get("progress")
+
+	(*sm.BooksActivitiesPTR)[metaDataM.BookUuid(bookUuid)].LastPage = progress
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Updated Book Progress!"))
 }
@@ -159,6 +173,7 @@ func (sm *BindingsManager) HandleHighlights(w http.ResponseWriter, req *http.Req
 
 	currentBook := (*sm.BooksActivitiesPTR)[metaDataM.BookUuid(bookUuid)]
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	switch action {
 	case "add":
 		for _, other := range currentBook.Highlights {
@@ -206,6 +221,7 @@ func (sm *BindingsManager) HandleNotes(w http.ResponseWriter, req *http.Request)
 
 	currentBook := (*sm.BooksActivitiesPTR)[metaDataM.BookUuid(bookUuid)]
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	switch action {
 	case "add", "update":
 		for _, highlight := range currentBook.Highlights {
@@ -224,12 +240,12 @@ func (sm *BindingsManager) HandleNotes(w http.ResponseWriter, req *http.Request)
 		}
 		break
 	default:
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		// w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte("Action Not Allowed on notes."))
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	// w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Updated Book Notes!"))
 
 }
@@ -251,6 +267,7 @@ func (sm *BindingsManager) HandleBookmarks(w http.ResponseWriter, req *http.Requ
 
 	currentBook := (*sm.BooksActivitiesPTR)[metaDataM.BookUuid(bookUuid)]
 
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 	switch action {
 	case "add":
 		currentBook.Bookmarks = append(currentBook.Bookmarks, bookmark)

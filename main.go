@@ -28,6 +28,6 @@ func main() {
 	}()
 
 	if err := http.ListenAndServe(":5050", nil); err != nil {
-		println("die")
+		panic("die")
 	}
 }

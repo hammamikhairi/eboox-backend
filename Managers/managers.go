@@ -55,8 +55,8 @@ func ManagersInit(libraryPath string) BooksManagers {
 	return bm
 }
 
-// XXX - DEV
 func (m *BooksManagers) Save() {
+	// save the date on sm.lastOpened for sm.CurrentBook
 	m.UserActivityM.Save()
 	utils.Assert(false, "[BooksManagers.Save] NOT Fully IMPLEMENTED.")
 }

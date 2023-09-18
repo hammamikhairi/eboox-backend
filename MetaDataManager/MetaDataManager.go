@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"io"
 	"log"
 	"strings"
@@ -21,6 +22,7 @@ type MetaDataManager struct {
 
 type BookUuid string
 type BookFiles map[string][]byte
+
 type BookMetaData struct {
 	FileName string `json:"file_name"`
 	FilePath string `json:"file_path"`
@@ -31,7 +33,8 @@ type BookMetaData struct {
 	Date     string `json:"creation_date" xml:"metadata>date"`
 	Uuid     string `json:"book_uuid" xml:"metadata>identifier"`
 
-	Cover []byte `json:"-"`
+	Cover     []byte         `json:"-"`
+	BookSpine map[string]int `json:"-"`
 }
 
 func MetaDataManagerInit(path string, inChan chan string, outChan chan BookFiles) *MetaDataManager {
@@ -83,6 +86,8 @@ func LoadBooksMetaData(booksPath string) map[BookUuid]BookMetaData {
 		booksMap[bookUuid] = bookMetaData
 	}
 
+	fmt.Printf("Loaded Library Books successfully from [%s]\n", booksPath)
+
 	return booksMap
 }
 
@@ -102,6 +107,20 @@ type FileInfo [2]string
 
 func LoadFromArchive(book *BookMetaData, archive *zip.ReadCloser, fileInfo FileInfo) {
 	var CoverBytes []byte
+
+	manifest := struct {
+		Items []struct {
+			Href      string `xml:"href,attr"`
+			ID        string `xml:"id,attr"`
+			MediaType string `xml:"media-type,attr"`
+		} `xml:"manifest>item"`
+	}{}
+	spine := struct {
+		ItemRefs []struct {
+			IDRef string `xml:"idref,attr"`
+		} `xml:"spine>itemref"`
+	}{}
+
 	for _, f := range archive.File {
 		// Optimization
 		if len(CoverBytes) != 0 && book.Title != "" {
@@ -131,9 +150,30 @@ func LoadFromArchive(book *BookMetaData, archive *zip.ReadCloser, fileInfo FileI
 			if err != nil {
 				panic(err)
 			}
+			err = xml.Unmarshal(buffer.Bytes(), &manifest)
+			if err != nil {
+				panic(err)
+			}
+			err = xml.Unmarshal(buffer.Bytes(), &spine)
+			if err != nil {
+				panic(err)
+			}
+
 		}
 	}
 
+	// For tracking progress (SOMEHOW THE DEVs OF EPUB.JS COULD NOT TRACK THE PROGRESS OF READING? Thanks for the library anyway <3)
+	itemPositionMap := make(map[string]int)
+	for i, itemRef := range spine.ItemRefs {
+		for _, item := range manifest.Items {
+			if item.ID == itemRef.IDRef {
+				itemPositionMap[item.Href] = i + 1
+				break
+			}
+		}
+	}
+
+	book.BookSpine = itemPositionMap
 	book.Date = utils.FormatDate(book.Date)
 	book.FilePath = fileInfo[0]
 	book.FileName = fileInfo[1]

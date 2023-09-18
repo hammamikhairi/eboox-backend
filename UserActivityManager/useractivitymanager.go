@@ -13,17 +13,18 @@ type BookActivity struct {
 	// XXX - DEV
 	BookUuid string
 
-	LastOpened   string
-	BookProgress string
+	LastOpened   string       `json:"last_opened"`
+	LastPage     string       `json:"last_page_opened"`
+	BookProgress string       `json:"book_progress"`
 	Bookmarks    []string     `json:"bookmarks"`
 	Highlights   []*Highlight `json:"highlights"`
 }
 
 type Highlight struct {
-	Date    string
-	Content string
-	Bounds  string
-	Note    string
+	Date    string `json:"date"`
+	Content string `json:"content"`
+	Bounds  string `json:"bounds"`
+	Note    string `json:"note"`
 }
 
 type UserActivityManager struct {
