@@ -11,10 +11,7 @@ import (
 const TEMP_LIBRARY_PATH string = "/home/khairi/Documents/Library"
 
 func main() {
-
-	println("start")
 	managers := managers.ManagersInit(TEMP_LIBRARY_PATH)
-	// defer managers.Save()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)

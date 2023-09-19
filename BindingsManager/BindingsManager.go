@@ -6,6 +6,7 @@ import (
 	utils "eboox/Utils"
 	"fmt"
 	"log"
+	"strconv"
 
 	"encoding/json"
 	"io/ioutil"
@@ -20,6 +21,7 @@ type BindingsManager struct {
 	CurrentBookFiles   metaDataM.BookFiles
 	CurrentBookUuid    string
 	PreviousBookUuid   string
+	LastChap           *metaDataM.SpineMeta
 
 	OutChan       chan string
 	BookFilesChan chan metaDataM.BookFiles
@@ -110,14 +112,9 @@ func (sm *BindingsManager) HandleBookFiles(w http.ResponseWriter, req *http.Requ
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	file := req.URL.Path[1:]
-	bookUuid := metaDataM.BookUuid(sm.CurrentBookUuid)
 
-	if index, ok := (*sm.LibraryMetaDataPTR)[bookUuid].BookSpine[file]; ok {
-		(*sm.BooksActivitiesPTR)[bookUuid].BookProgress = fmt.Sprintf(
-			"%.2f",
-			(float32(index)/float32(len((*sm.LibraryMetaDataPTR)[bookUuid].BookSpine)))*100,
-		)
-		println("PROGRESS  >> ", index, " OUT OF : ", len((*sm.LibraryMetaDataPTR)[bookUuid].BookSpine))
+	if spine, ok := (*sm.LibraryMetaDataPTR)[metaDataM.BookUuid(sm.CurrentBookUuid)].BookSpine[file]; ok {
+		sm.LastChap = spine
 	}
 
 	if book, ok := sm.CurrentBookFiles[file]; ok {
@@ -146,10 +143,21 @@ func (sm *BindingsManager) HandlersInit() {
 // Activities handlers
 func (sm *BindingsManager) HandleProgress(w http.ResponseWriter, req *http.Request) {
 
-	bookUuid := req.URL.Query().Get("book_uuid")
-	progress := req.URL.Query().Get("progress")
+	bookUuid := metaDataM.BookUuid(req.URL.Query().Get("book_uuid"))
+	lastPage := req.URL.Query().Get("progress")
+	chapterPercentage := req.URL.Query().Get("chapter_percentage")
+	parsedPercentage, _ := strconv.ParseFloat(chapterPercentage, 32)
 
-	(*sm.BooksActivitiesPTR)[metaDataM.BookUuid(bookUuid)].LastPage = progress
+	if book, ok := (*sm.LibraryMetaDataPTR)[bookUuid]; ok {
+		bookSize := book.Size
+
+		//runuingpercentage + percentage(chapter)
+		percentage := sm.LastChap.RuningPercentage + ((float32(sm.LastChap.ChunkSize)*float32(parsedPercentage))/float32(bookSize))*100
+		(*sm.BooksActivitiesPTR)[bookUuid].BookProgress = fmt.Sprintf("%.2f", percentage)
+	}
+
+	(*sm.BooksActivitiesPTR)[bookUuid].LastPage = lastPage
+
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Updated Book Progress!"))

@@ -33,8 +33,15 @@ type BookMetaData struct {
 	Date     string `json:"creation_date" xml:"metadata>date"`
 	Uuid     string `json:"book_uuid" xml:"metadata>identifier"`
 
-	Cover     []byte         `json:"-"`
-	BookSpine map[string]int `json:"-"`
+	Cover     []byte                `json:"-"`
+	BookSpine map[string]*SpineMeta `json:"-"`
+	Size      int
+}
+
+type SpineMeta struct {
+	ChunkSize        int
+	RuningPercentage float32
+	ChapterIndex     int
 }
 
 func MetaDataManagerInit(path string, inChan chan string, outChan chan BookFiles) *MetaDataManager {
@@ -163,17 +170,51 @@ func LoadFromArchive(book *BookMetaData, archive *zip.ReadCloser, fileInfo FileI
 	}
 
 	// For tracking progress (SOMEHOW THE DEVs OF EPUB.JS COULD NOT TRACK THE PROGRESS OF READING? Thanks for the library anyway <3)
-	itemPositionMap := make(map[string]int)
+	itemPositionMap := make(map[string]*SpineMeta)
+	utils.Pp(itemPositionMap)
+	booksSizeByIndex := make([]int, len(spine.ItemRefs))
 	for i, itemRef := range spine.ItemRefs {
 		for _, item := range manifest.Items {
 			if item.ID == itemRef.IDRef {
-				itemPositionMap[item.Href] = i + 1
+				itemPositionMap[item.Href] = &SpineMeta{ChapterIndex: i}
 				break
 			}
 		}
 	}
 
+	total := 0
+	for _, f := range archive.File {
+		rc, err := f.Open()
+		defer rc.Close()
+
+		var buffer bytes.Buffer
+		if _, ok := itemPositionMap[f.Name]; ok {
+			_, err = io.Copy(&buffer, rc)
+			if err != nil {
+				panic(err)
+			}
+
+			fileLength := len(buffer.Bytes())
+			total += fileLength
+			booksSizeByIndex[itemPositionMap[f.Name].ChapterIndex] = len(buffer.Bytes())
+			itemPositionMap[f.Name].ChunkSize = fileLength
+		}
+	}
+
+	for file, spineMeta := range itemPositionMap {
+		temp := 0
+		for i := 0; i < spineMeta.ChapterIndex; i++ {
+			temp += booksSizeByIndex[i]
+		}
+
+		itemPositionMap[file].RuningPercentage = (float32(temp) / float32(total)) * 100
+	}
+
+	println(book.Title)
+	println(total)
+
 	book.BookSpine = itemPositionMap
+	book.Size = total
 	book.Date = utils.FormatDate(book.Date)
 	book.FilePath = fileInfo[0]
 	book.FileName = fileInfo[1]
