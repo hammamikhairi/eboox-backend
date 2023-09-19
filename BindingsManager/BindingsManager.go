@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"encoding/json"
 	"io/ioutil"
@@ -118,6 +119,9 @@ func (sm *BindingsManager) HandleBookFiles(w http.ResponseWriter, req *http.Requ
 	}
 
 	if book, ok := sm.CurrentBookFiles[file]; ok {
+		if strings.Contains(file, "css") {
+			w.Header().Set("Content-Type", "text/css")
+		}
 		log.Printf("[OK] reqested [%s] for <%s>", file, sm.CurrentBookUuid)
 		w.Write(book)
 		return
